@@ -6,11 +6,13 @@ from dice_graphics import DICE_FACES, DICE_HEIGHT
 bot_names = ['Maccus', 'Ratlin', 'Penrod', 'Jimmy Legs', 'Koleniko', 'Greenbeard', 'Clanker', 'Crash', 'Hadras', 'Wyvern'] 
 
 class Player():
-    def __init__(self, name):
+    def __init__(self, name, is_human):
         self.name = name
         self.num_of_dice = 6
         self.hand = []
         self.dice_roll()
+        self.is_human = is_human
+
 
 
     def dice_roll(self):
@@ -52,18 +54,28 @@ def addBots():
     while number_of_bots < 1 or number_of_bots > 5:
         number_of_bots = int(input("Enter a number between 1 and 5 to choose how many AI players to have: "))
     for i in range(number_of_bots):
-        list_of_bots.append(Player(random.choice(bot_names)))
+        list_of_bots.append(Player(random.choice(bot_names), False))
     return list_of_bots
     
 
 #MAIN
-if __name__ == '__main__':
+def main():
     players = []
-    players.append(Player(input("Enter your name: ")))
+    bid = [0, 6]
+    players.append(Player(input("Enter your name: "), True))
     players += addBots()
-    for player in players:
-        print(f"{player.name}'s hand is:")
-        player.gen_dice_faces()
+    #for player in players:
+    #    print(f"{player.name}'s hand is:")
+    #    player.gen_dice_faces()
+    goes_next  = random.choice(players)
+    game_continues = True
+    while game_continues:
+        if goes_next.is_human:
+            print("Your hand is")
+            goes_next.gen_dice_faces()
+
+if __name__ == '__main__':
+    main()
     
     
 
