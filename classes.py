@@ -68,7 +68,7 @@ class Player:
         print("Place your bet.")
         # TODO: catch if bet is not digits
         while True:
-            new_bet["dice_count"] = int(input('Enter Value of die: '))
+            new_bet["dice_value"] = int(input('Enter Value of die: '))
             new_bet["dice_count"] = int(input('Enter Number of die: '))
             if self.bet_valid_check(new_bet["dice_count"], new_bet["dice_value"], bet):
                 return new_bet
@@ -91,13 +91,13 @@ class NPCPlayer(Player):
         if odds < 0.2:
             self.call = True
         else:
-            self.make_bet(game_prev_bet)
+            return self.make_bet(game_prev_bet)
 
     def calc_odds(self, game_prev_bet):
         total_hidden_dice = Player.total_die_count - len(self.hand)
         dice_val_count = game_prev_bet["dice_count"] - self.hand.count(game_prev_bet["dice_value"])
         return round(factorial(total_hidden_dice)/factorial(total_hidden_dice - dice_val_count)
-                     * pow(1/6, dice_val_count) * pow(5/6, total_hidden_dice - total_hidden_dice))
+                     * pow(1/6, dice_val_count) * pow(5/6, total_hidden_dice - total_hidden_dice), 2)
 
     def make_bet(self, prev_bet):
         new_bet = {"dice_count" : 0 , "dice_value" : 0}
@@ -106,6 +106,7 @@ class NPCPlayer(Player):
         for i in self.hand:
             curr_freq = self.hand.count(i)
             if curr_freq > max_freq:
+                max_freq = curr_freq
                 dice_val_to_bet = i
         new_bet["dice_count"] = prev_bet["dice_count"] + 1
         new_bet["dice_value"] = dice_val_to_bet
@@ -128,7 +129,6 @@ class Game:
 
     def add_players(self, bot_names_list):
         number_of_bots = 0
-        self.list_of_players = []
         self.list_of_players.append(Player(input("Enter your name: ")))
         while number_of_bots < 1 or number_of_bots > 5:
             number_of_bots = int(input('Enter a number between 1 and 5 to choose how many AI players to have: '))
@@ -141,7 +141,7 @@ class Game:
         self.bet.update(self.next_player.make_bet(self.bet))
 
     def get_next_player(self):
-        return (self.list_of_players.index(self.next_player) + 1) % len(self.list_of_players)
+        self.next_player = self.list_of_players[(self.list_of_players.index(self.next_player) + 1) % len(self.list_of_players)]
 
     def check_winner(self):
         pass #TODO: implement a winner checker
