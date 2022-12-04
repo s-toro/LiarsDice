@@ -48,14 +48,11 @@ class Player:
         print(f'Last bet was {prev_bet["dice_count"]} dice of the value {prev_bet["dice_value"]}')
         print("Your hand is:")
         self.gen_dice_faces()
-        action = input("Enter [b] to bet, or [c] to call")
-        while True:
-            if action == "b":
-                self.make_bet()
-                break
-            if action == "c":
-                self.call = True
-                break
+        action = input("Enter [b] to bet, or [c] to call: ")
+        if action == "b":
+            return "bet"
+        if action == "c":
+            return "call"
 
     def lose_die(self):
         if len(self.hand) > 0:
@@ -66,19 +63,29 @@ class Player:
     def make_bet(self, bet):
         new_bet = {"dice_count" : 0 , "dice_value" : 0}
         print("Place your bet.")
-        # TODO: catch if bet is not digits
         while True:
-            new_bet["dice_value"] = int(input('Enter Value of die: '))
-            new_bet["dice_count"] = int(input('Enter Number of die: '))
-            if self.bet_valid_check(new_bet["dice_count"], new_bet["dice_value"], bet):
-                return new_bet
-                break
+            try:
+                new_bet["dice_value"] = int(input('Enter Value of die: '))
+                new_bet["dice_count"] = int(input('Enter Number of die: '))
+            except ValueError:
+                print("The entered value is a not an integer. Try again")
+                continue
+            else:
+                if self.bet_valid_check(new_bet["dice_count"], new_bet["dice_value"], bet):
+                    return new_bet
 
-    def bet_valid_check(self, bet_dice_value, bet_dice_count, bet):
-        if bet_dice_value > bet["dice_value"] or bet_dice_count > bet["dice_count"] and 1 <= bet_dice_value <= 6 and 1 <= bet_dice_count <= Player.total_die_count:
-            return True
-        else:
+    def bet_valid_check(self, new_bet_dice_count, new_bet_dice_val, bet):
+        if not 1 <= new_bet_dice_val <= 6 or not 1 <= new_bet_dice_count <= Player.total_die_count:
+            print(f"""You can't bet using a die value higher than 6
+                     or a die count larger than the number of die on the table {Player.total_die_count}
+                     Your bet was: {new_bet_dice_count} die with the value of {new_bet_dice_val}""")
             return False
+        if not ((new_bet_dice_val > bet["dice_value"]) | (new_bet_dice_count > bet["dice_count"])):
+            print(f"""You must place a bet with at least either a larger number or value of die
+                      You current bet was {new_bet_dice_count} die with the value of {new_bet_dice_val}
+                      while the previous bet is {bet["dice_count"]} of die with value of {bet["dice_value"]}""")
+            return False
+        return True
 
 
 class NPCPlayer(Player):
@@ -90,8 +97,8 @@ class NPCPlayer(Player):
         odds = self.calc_odds(game_prev_bet)
         if odds < 0.2:
             self.call = True
-        else:
-            return self.make_bet(game_prev_bet)
+            return "call"
+        return "bet" 
 
     def calc_odds(self, game_prev_bet):
         total_hidden_dice = Player.total_die_count - len(self.hand)
@@ -122,9 +129,9 @@ class Game:
         self.bet = {"dice_count": 0, "dice_value": 6}
         self.list_of_players = []
         self.starting_player = ""
-        self.next_player = ""
+        self.current_player = ""
         self.add_players(bot_names_list)
-        self.set_starting_player()
+        #self.set_starting_player()
         self.game_over = False
 
     def add_players(self, bot_names_list):
@@ -135,30 +142,66 @@ class Game:
         for _ in range(number_of_bots):
             self.list_of_players.append(NPCPlayer(random.choice(bot_names_list)))
 
+    #def set_starting_player(self):
+    #    self.current_player = random.choice(self.list_of_players)
+    #    print(f"{self.current_player.get_name()} starts the game\n")
+    #    self.bet.update(self.current_player.make_bet(self.bet))
     def set_starting_player(self):
-        self.next_player = random.choice(self.list_of_players)
-        print(f"{self.next_player.get_name()} starts the game\n")
-        self.bet.update(self.next_player.make_bet(self.bet))
+        if self.current_player == "":
+            self.current_player = random.choice(self.list_of_players)
+            if self.current_player.is_human:
+                print("Your hand is:")
+                self.current_player.gen_dice_faces()
+
 
     def get_next_player(self):
-        self.next_player = self.list_of_players[(self.list_of_players.index(self.next_player) + 1) % len(self.list_of_players)]
+        self.current_player = self.list_of_players[(self.list_of_players.index(self.current_player) + 1) % len(self.list_of_players)]
 
     def check_winner(self):
-        pass #TODO: implement a winner checker
+        for player in self.list_of_players:
+            total_dice_count = player.hand.count(self.bet["dice_value"])
+        if total_dice_count < self.bet["dice_count"]:
+            print(f"{self.current_player.get_name()}'s call was correct, everyone else loses a die")
+            for player in self.list_of_players:
+                if player.name != self.current_player.name:
+                    player.lose_die()
+        else:
+            print(f"{self.current_player.get_name}'s call was wrong, he loses a die")
+            self.current_player.lose_die()
+
+    def resolve_round(self):
+        while len(self.current_player.hand) == 0:
+            self.get_next_player
+        self.list_of_players = [player for player in self.list_of_players if not len(player.hand) == 0]
+
+    def get_winner(self):
+        if len(self.list_of_players) == 1:
+            print(f"{self.list_of_players[0].get_name} is the winner!")
+
 
     def play_round(self):
-        while True:
+        #while True:
+        self.set_starting_player()
+        self.bet.update(self.current_player.make_bet(self.bet))
+        self.get_next_player()
+        while len(self.list_of_players) > 1:
+            player_decision = self.current_player.make_decision(self.bet)
+            if player_decision == "call":
+                print(f"Player {self.current_player.get_name()} calls that last bet was BS!")
+                self.check_winner()
+                self.resolve_round()
+            if player_decision == "bet":
+                self.bet.update(self.current_player.make_bet(self.bet))
             self.get_next_player()
-            self.bet.update(self.next_player.make_decision(self.bet))
-            if self.next_player.call is True:
-                self.next_player.call = False
-                break
-        #self.check_winner
-        print("winner will be checked here")
-
+        self.get_winner
+        
 
 
 if __name__ == "__main__":
     bot_names = ["player1", "player2", "player3", "player4", "player5"]
     oGame = Game(bot_names)
+    #while len(oGame.list_of_players) > 1:
+    #    oGame.play_round()
+    #print(f"The winner of the game is {oGame.get_winner}")
     oGame.play_round()
+    
