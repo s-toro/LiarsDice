@@ -169,8 +169,9 @@ class Game:
                 )
             )
         for _ in range(number_of_bots):
-            # TODO add a check to use bot name only once
-            self.list_of_players.append(NPCPlayer(random.choice(bot_names_list)))
+            name = random.choice(bot_names_list)
+            bot_names_list.remove(name)
+            self.list_of_players.append(NPCPlayer(name))
 
     def set_starting_player(self):
         if self.current_player == "":
