@@ -117,6 +117,10 @@ class NPCPlayer(Player):
         return "bet"
 
     def calc_odds(self, game_prev_bet):
+        # TODO issue in return statement, review how the odds are being calculated, below error:
+        # ValueError: factorial() not defined for negative value
+        # (Pdb) p total_hidden_dice - 9
+        # (Pdb) p dice_val_count - 11
         total_hidden_dice = Player.total_die_count - len(self.hand)
         dice_val_count = game_prev_bet["dice_count"] - self.hand.count(
             game_prev_bet["dice_value"]
