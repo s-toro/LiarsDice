@@ -161,13 +161,15 @@ class Game:
     def add_players(self, bot_names_list):
         number_of_bots = 0
         self.list_of_players.append(Player(input("Enter your name: ")))
-        while number_of_bots < 1 or number_of_bots > 5:
-            number_of_bots = int(
-                input(
-                    "Enter a number between 1 and 5 to choose how many AI players to"
-                    " have: "
-                )
-            )
+        while True:
+            try:
+                number_of_bots = int(input("Please enter a number between 1 and 5 for how many AI players you would like to have: "))
+                if 1 <= number_of_bots <= 5:
+                    break
+                else:
+                    print("The number is not between 1 and 5.")
+            except ValueError:
+                print("The input is not a valid integer.")
         for _ in range(number_of_bots):
             name = random.choice(bot_names_list)
             bot_names_list.remove(name)
