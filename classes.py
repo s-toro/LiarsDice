@@ -1,6 +1,7 @@
 import random
-import typing
-from dice_graphics import DICE_FACES, DICE_HEIGHT
+import time
+import sys
+from dice_graphics import DICE_FACES, DICE_HEIGHT, START_SCREEN, START_TEXT
 
 # from math import factorial
 from scipy.stats import binom
@@ -45,7 +46,7 @@ class Player:
             for row in dice_faces_rows:
                 print(f"{row}")
 
-    def make_decision(self, prev_bet):
+    def make_decision(self, prev_bet, is_wild):
         print(
             f'Last bet was {prev_bet["dice_count"]} dice of the value'
             f' {prev_bet["dice_value"]}'
@@ -64,7 +65,7 @@ class Player:
             self.num_of_dice -= 1
             Player.total_die_count -= 1
 
-    def make_bet(self, bet):
+    def make_bet(self, bet, is_wild):
         new_bet = {"dice_count": 0, "dice_value": 0}
         print("Place your bet.")
         while True:
@@ -109,35 +110,39 @@ class NPCPlayer(Player):
         super().__init__(name)
         self.is_human = False
 
-    def make_decision(self, game_prev_bet):
-        odds = self.calc_odds(game_prev_bet)
-        if odds < 0.2:
+    def make_decision(self, game_prev_bet, is_wild):
+        odds = self.calc_odds(game_prev_bet, is_wild)
+        if odds < 0.3:
             self.call = True
             return "call"
         return "bet"
 
-    def calc_odds(self, game_prev_bet):
-        # TODO issue in return statement, review how the odds are being calculated, below error:
-        # ValueError: factorial() not defined for negative value
-        # (Pdb) p total_hidden_dice - 9
-        # (Pdb) p dice_val_count - 11
+    def calc_odds(self, game_prev_bet, is_wild):
+        face_possibility = 1/6
         total_hidden_dice = Player.total_die_count - len(self.hand)
         dice_val_count = game_prev_bet["dice_count"] - self.hand.count(
             game_prev_bet["dice_value"]
         )
+        if is_wild:
+            dice_val_count += self.hand.count(1)
+            face_possibility = 2/6 
         if dice_val_count > total_hidden_dice:
             return 0
-        return round(1 - binom.cdf(dice_val_count - 1, total_hidden_dice, 1 / 6), 2)
+        return round(1 - binom.cdf(dice_val_count - 1, total_hidden_dice, face_possibility), 2)
 
-    def make_bet(self, prev_bet):
+    def make_bet(self, prev_bet, is_wild):
         new_bet = {"dice_count": 0, "dice_value": 0}
         curr_freq = 0
         max_freq = 0
         for i in self.hand:
             curr_freq = self.hand.count(i)
+            if is_wild and i != 0:
+                curr_freq += self.hand.count(1)
             if curr_freq > max_freq:
                 max_freq = curr_freq
                 dice_val_to_bet = i
+        if is_wild and dice_val_to_bet == 1:
+            dice_val_to_bet = random.randint(2, 6)
         if new_bet["dice_value"] <= dice_val_to_bet and new_bet["dice_count"] <= prev_bet["dice_count"]:
             new_bet["dice_count"] = prev_bet["dice_count"] + 1
         new_bet["dice_value"] = dice_val_to_bet
@@ -145,19 +150,46 @@ class NPCPlayer(Player):
             f'{self.name} bets that there is {new_bet["dice_count"]} die with value of'
             f' {new_bet["dice_value"]} on the table'
         )
+        time.sleep(1)
         return new_bet
 
 
 class Game:
     def __init__(self, bot_names_list):
+        self.start_graphic()
         self.bet = {"dice_count": 0, "dice_value": 1}
         self.list_of_players = []
         self.starting_player = ""
         self.current_player = ""
         self.add_players(bot_names_list)
-        # self.set_starting_player()
         self.game_over = False
+        self.wild_ones = False
+        self.set_wild_mode()
+    
+    def start_graphic(self):
+        #print(START_TEXT)
+        for char in START_TEXT:
+            sys.stdout.write(char)
+            sys.stdout.flush()
+            time.sleep(0.001)
+        print("\n\n")
+        #print(START_SCREEN)
+        for char in START_SCREEN:
+            sys.stdout.write(char)
+            sys.stdout.flush()
+            time.sleep(0.001)
+        print("\n\n")
 
+    def set_wild_mode(self):
+        while True:
+            is_wild = input("Would you like to enable wild ones mode and count ones as the face of the current bid(y/n): ")
+            if is_wild == 'y' or is_wild == 'n':
+                break
+            else:
+                print("Please enter either 'y'(yes) or 'n'(no)!")
+        if is_wild == 'y':
+            self.wild_ones = True
+        
     def add_players(self, bot_names_list):
         number_of_bots = 0
         self.list_of_players.append(Player(input("Enter your name: ")))
@@ -189,11 +221,15 @@ class Game:
         ]
 
     def check_winner(self):
-        # TODO possible error when checking the values
         total_dice_count = 0
         for player in self.list_of_players:
             total_dice_count += player.hand.count(self.bet["dice_value"])
-        print(f"There is a total of {total_dice_count} {self.bet['dice_value']}'s.")
+            if self.wild_ones:
+                total_dice_count += player.hand.count(1)
+        if self.wild_ones:
+            print(f"There is a total of {total_dice_count} {self.bet['dice_value']}'s when counting ones as well.")
+        else:
+            print(f"There is a total of {total_dice_count} {self.bet['dice_value']}'s.")
         if total_dice_count < self.bet["dice_count"]:
             print(
                 f"{self.current_player.get_name()}'s call was correct, everyone else"
@@ -208,17 +244,14 @@ class Game:
 
     def reroll_player_dice(self):
         for player in self.list_of_players:
-            # TODO fix the reroll of dice call at the end of the game, ccheck round resolve
             player.dice_roll()
 
     def resolve_round(self):
         while len(self.current_player.hand) == 0:
             self.get_next_player()
-        # TODO possible return as None of player objects with 0 die left instead of removing them from the list
         for player in self.list_of_players:
             if len(player.hand) == 0:
                 print(f"{player.get_name()} is out of the game")
-        # self.list_of_players = [player if not len(player.hand) == 0 else print(f'{player.get_name()} is out of the game') for player in self.list_of_players]
         self.list_of_players = [
             player for player in self.list_of_players if not len(player.hand) == 0
         ]
@@ -226,7 +259,9 @@ class Game:
             self.get_winner()
 
     def restart_for_new_round(self):
+        input("\n[Press enter to continue to next round]")
         print("\n\nStarting new round:")
+        time.sleep(1)
         self.reroll_player_dice()
         self.bet = {"dice_count": 0, "dice_value": 6}
         if self.current_player.is_human:
@@ -242,15 +277,14 @@ class Game:
         for player in self.list_of_players:
             print(f"{player.get_name()}'s hand is:")
             player.gen_dice_faces()
+            time.sleep(1)
 
     def play_round(self):
-        # while True:
         self.set_starting_player()
-        self.bet.update(self.current_player.make_bet(self.bet))
+        self.bet.update(self.current_player.make_bet(self.bet, self.wild_ones))
         self.get_next_player()
-        # TODO replace way of check for end of game to be with break inside the while loop
         while True:
-            player_decision = self.current_player.make_decision(self.bet)
+            player_decision = self.current_player.make_decision(self.bet, self.wild_ones)
             if player_decision == "call":
                 print(f"{self.current_player.get_name()} calls that last bet was BS!")
                 print("Revealing all players hands!!!")
@@ -260,7 +294,7 @@ class Game:
                 self.restart_for_new_round()
                 player_decision = "bet"
             if player_decision == "bet":
-                self.bet.update(self.current_player.make_bet(self.bet))
+                self.bet.update(self.current_player.make_bet(self.bet, self.wild_ones))
                 self.get_next_player()
 
 
