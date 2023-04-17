@@ -16,10 +16,3 @@ then the player who made that bid wins, otherwise the person that called the bet
 The losing player loses one die.
 The game goes on until only one player has remaining dice in his hand, that player is declared the winner.
 
-TODO:
-- complete the betting system so that a full round of the game is played, 
-  - set rounds to be started by the person that lost the previous round
-  - add additional checks to the bid function to make sure that the bed is valid
-  - implement a 'bluff' mode for the bots that will have them bet random die face and dice quantaty in some rounds
-- implement a function to determine the winner of a round
-- implement 'wild' mode in which dice values of 1 will count as the value of the current bid.
