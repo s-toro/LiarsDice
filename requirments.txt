@@ -1,0 +1,8 @@
+flake8==6.0.0
+jedi==0.18.2
+mccabe==0.7.0
+numpy==1.24.1
+parso==0.8.3
+pycodestyle==2.10.0
+pyflakes==3.0.1
+scipy==1.10.0
