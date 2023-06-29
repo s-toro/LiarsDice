@@ -7,6 +7,35 @@ from dice_graphics import DICE_FACES, DICE_HEIGHT, START_SCREEN, START_TEXT
 from scipy.stats import binom
 
 class Player:
+    """
+    A class used to represent a player in 'liars' dice' game
+
+    Attributes
+    ----------
+    name
+        The name of the player
+    num_of_dice
+        The number of dice in a players hand
+    is_human
+        Marks if it is a human controlled player or an NPC
+    
+    Methods
+    ---------
+    get_name
+        Return the name of the player
+    dice_roll
+        Rolls the dice in a players hand to generate a random hand
+    gen_dice_face
+        Print the faces of the dice in a players hand
+    make_decision
+        Prompts the player to make a decision to bet or call
+    make_bet
+        Prompts the player for a dice count and face to make a bet, if bet is valid it is returned
+    lose_die
+        Remove one die from a players hand
+    bet_is_valid
+        Check if a bet is valid according to the previous bet in the game
+    """
     total_die_count = 0
 
     def __init__(self, name):
@@ -18,9 +47,11 @@ class Player:
         Player.total_die_count += self.num_of_dice
 
     def get_name(self):
+        """Return a players name"""
         return self.name
 
     def dice_roll(self):
+        """Roll the dice in a players hand"""
         roll_results = []
         for _ in range(self.num_of_dice):
             roll = random.randint(1, 6)
@@ -28,6 +59,7 @@ class Player:
         self.hand = roll_results
 
     def gen_dice_faces(self):
+        """Generate graphics for the dice in a players hand"""
         dice_faces = []
         if len(self.hand) < 1:
             print(f"Player {self.name} has no die left")
@@ -45,6 +77,7 @@ class Player:
                 print(f"{row}")
 
     def make_decision(self, prev_bet, is_wild):
+        """Prompt the player to make a decision whether to bet or call"""
         print(
             f'Last bet was {prev_bet["dice_count"]} dice of the value'
             f' {prev_bet["dice_value"]}'
@@ -58,12 +91,14 @@ class Player:
             return "call"
 
     def lose_die(self):
+        """Remove one die from a players hand, to be used when he make a wrong call or his bluff is called"""
         if len(self.hand) > 0:
             self.hand.pop()
             self.num_of_dice -= 1
             Player.total_die_count -= 1
 
     def make_bet(self, prev_bet, is_wild):
+        """Prompt player to make a bet, and return it ones a valid one is made"""
         new_bet = {"dice_count": 0, "dice_value": 0}
         print("Place your bet.")
         while True:
@@ -80,6 +115,7 @@ class Player:
                     return new_bet
 
     def bet_is_valid(self, new_bet, prev_bet):
+        """Check if a bet is valid based on the state of the game"""
         new = '\n'
         if (
             not 1 <= new_bet["dice_value"] <= 6
@@ -105,11 +141,33 @@ class Player:
 
 
 class NPCPlayer(Player):
+    """
+    A class used to represent an NPC player in Liar's Dice game
+    The class inherits some of the behavior from the Player class
+
+    Attributes
+    ----------
+    The attributes for the class is inherited from the Player class
+
+    Methods
+    ---------
+    calc_odds
+        Calculates the probability for for a bet to be correct
+        based on a NPCs own hand and the number of other dice on the table
+    override bet_is_valid
+        Same as for parent class but defined without the informational print statements
+    override make_decision
+        The NPC player makes a decision based on odds of the previous bet in the game
+    override make_bet
+        The NPC makes a bet according to the most common dice in his hand
+        If it is not a valid bet, it will be increased or randomized until it is valid
+    """
     def __init__(self, name):
         super().__init__(name)
         self.is_human = False
 
     def bet_is_valid(self, new_bet, prev_bet):
+        """Check if a bet is valid based on the state of the game, defined without the print statements for NPC player"""
         if (
             not 1 <= new_bet["dice_value"] <= 6
             or not 1 <= new_bet["dice_count"] <= Player.total_die_count
@@ -124,12 +182,14 @@ class NPCPlayer(Player):
 
 
     def make_decision(self, game_prev_bet, is_wild):
+        """NPC player chooses when to be or call based on odds"""
         odds = self.calc_odds(game_prev_bet, is_wild)
         if odds < 0.3:
             return "call"
         return "bet"
 
     def calc_odds(self, bet, is_wild):
+        """Calculate the odds based on the previous bet made"""
         total_hidden_dice = Player.total_die_count - len(self.hand)
         dice_val_count = bet["dice_count"] - self.hand.count(
             bet["dice_value"]
@@ -144,6 +204,7 @@ class NPCPlayer(Player):
         return round(1 - binom.cdf(dice_val_count - 1, total_hidden_dice, face_possibility), 2)
 
     def make_bet(self, prev_bet, is_wild):
+        """NPC player to make a bet based on dice in his hand, if best bet not a valid bet randomize to a valid one"""
         new_bet = {"dice_count": 0, "dice_value": 0}
         freq = 0
         for i in self.hand:
@@ -170,25 +231,70 @@ class NPCPlayer(Player):
 
 
 class Game:
+    """
+    A class to represent the game of Liar's dice and coordinate the player classes
+
+    Attributes
+    ----------
+    bet
+        Dict to hold the number of dice (dice_count) and the dice face (dice_value) of the last made bet
+    starting_player
+        Set to the player starting the round 
+    current_player
+        The player whose turn it currently is
+    bot_names_list
+        List of names to be used for the NPC players
+
+    Methods
+    ---------
+    start_game
+        Set the initial state of the game - print start screen, add players
+    print_start_graphic
+        Print the starting screen
+    set_wild_mode 
+        Enable the wild ones mode where 1's count as the face of the current bet
+    add_players
+        Add the human controlled and a selected number of NPC players
+    set_starting_player
+        Set the starting player for the game
+    get_next_player
+        Get the next player who's turn it is
+    check_winner
+        Check who is the winner of the game an prints his name
+    reroll_players_dice
+        Reroll the dice in all players' hands
+    resolve_round
+        After a player calls a bet, check if call is correct or not, and remove dice and players accordingly, set player that wil start next round
+    restart_for_new_round
+        Resets the settings for the next round - call reroll_players_dice, reset the bet
+    get_winner
+        Check when only one player remains in the game, declare him the winner
+    reveal_hands
+        Print the hands of all players in the game
+    play_game 
+        Play a game going through rounds until only one player remains
+    """
     def __init__(self, bot_names_list):
         self.bet = {"dice_count": 0, "dice_value": 0}
-        self.list_of_players = []
         self.starting_player = ""
         self.current_player = ""
         self.bot_names_list =  bot_names_list
 
     def start_game(self):
-        self.start_graphic()
+        """Setup the game - print starting graphics, add players, set wild ones mode"""
+        self.print_start_graphic()
         self.add_players(self.bot_names_list)
         self.set_wild_mode()
-        self.play_round()
+        self.play_game()
         while continue_game != 'n' or continue_game != 'y':
             continue_game = input('Would you like to player another game (y/n): ')
         if continue_game == "y":
             self.init_game()
         else:
             print("Quitting game.")
-    def start_graphic(self):
+
+    def print_start_graphic(self):
+        """Print the graphics for the game, defined in dice_graphics.py"""
         for char in START_TEXT:
             sys.stdout.write(char)
             sys.stdout.flush()
@@ -201,6 +307,7 @@ class Game:
         print("\n\n")
 
     def set_wild_mode(self):
+        """Activate wild ones mode where 1's count as the face of the current bet"""
         while True:
             is_wild = input("Would you like to enable wild ones mode and count ones as the face of the current bid (y/n): ")
             if is_wild == 'y' or is_wild == 'n':
@@ -213,6 +320,7 @@ class Game:
             self.wild_ones = False
         
     def add_players(self, bot_names_list):
+        """Add the human player, prompt him regarding how many NPC players he wants in the game"""
         self.list_of_players = []
         number_of_bots = 0
         self.list_of_players.append(Player(input("Enter your name: ")))
@@ -231,6 +339,7 @@ class Game:
             self.list_of_players.append(NPCPlayer(name))
 
     def set_starting_player(self):
+        """Set who will be the starting player for the game, if he is not an NPC, show his hand on the screen"""
         if self.current_player == "":
             self.current_player = random.choice(self.list_of_players)
             if self.current_player.is_human:
@@ -238,6 +347,7 @@ class Game:
                 self.current_player.gen_dice_faces()
 
     def get_next_player(self):
+        """Return the next player object from the ones in the game"""
         self.previous_player = self.current_player
         self.current_player = self.list_of_players[
             (self.list_of_players.index(self.current_player) + 1)
@@ -245,6 +355,7 @@ class Game:
         ]
 
     def check_winner(self):
+        """Check who is the winner depending on all dice on the table and last bet made"""
         total_dice_count = 0
         for player in self.list_of_players:
             total_dice_count += player.hand.count(self.bet["dice_value"])
@@ -265,10 +376,12 @@ class Game:
             self.current_player.lose_die()
 
     def reroll_player_dice(self):
+        """Re-roll the dice for each player in the game"""
         for player in self.list_of_players:
             player.dice_roll()
 
     def resolve_round(self):
+        """Remove all players which have no dice left, if the player who should be next in turn has 0 dice, set the next player"""
         while len(self.current_player.hand) == 0:
             self.get_next_player()
         for player in self.list_of_players:
@@ -281,6 +394,7 @@ class Game:
             self.get_winner()
 
     def restart_for_new_round(self):
+        """Resets the table for a new round - the dice in each players hands will be re-rolled, bet value will be reset"""
         input("\n[Press enter to continue to next round]")
         print("\n\nStarting new round:")
         time.sleep(1)
@@ -291,6 +405,7 @@ class Game:
             self.current_player.gen_dice_faces()
 
     def get_winner(self):
+        """Print the name of the winner, who will be the only remaining player in the game"""
         print(f"{self.list_of_players[0].get_name()} is the winner!")
         exit()
 
@@ -301,7 +416,8 @@ class Game:
             player.gen_dice_faces()
             time.sleep(1)
 
-    def play_round(self):
+    def play_game(self):
+        """Play rounds looping through each player until only one remains"""
         self.set_starting_player()
         self.bet.update(self.current_player.make_bet(self.bet, self.wild_ones))
         self.get_next_player()
