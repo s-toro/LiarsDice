@@ -3,7 +3,6 @@ import time
 import sys
 from dice_graphics import DICE_FACES, DICE_HEIGHT, START_SCREEN, START_TEXT
 
-# from math import factorial
 from scipy.stats import binom
 
 class Player:
@@ -121,21 +120,23 @@ class Player:
             not 1 <= new_bet["dice_value"] <= 6
             or not 1 <= new_bet["dice_count"] <= Player.total_die_count
         ):
-            print(
-                f"You can't bet using a die value higher than 6 {new}"
-                f'or a die count larger than the number of die on the table {Player.total_die_count} {new}'
-                f'Your bet was: {new_bet["dice_count"]} die with the value of {new_bet["dice_value"]} {new}'
-            )
+            if (self.__class__.__name__ == "Player"):
+                print(
+                    f"You can't bet using a die value higher than 6 {new}"
+                    f'or a die count larger than the number of die on the table {Player.total_die_count} {new}'
+                    f'Your bet was: {new_bet["dice_count"]} die with the value of {new_bet["dice_value"]} {new}'
+                )
             return False
         if (
             (new_bet["dice_count"] <= prev_bet["dice_count"] and not new_bet["dice_value"] > prev_bet["dice_value"])
             or (new_bet["dice_value"] < prev_bet["dice_value"])
         ):
-            print(
-                f'You must place a bet with either a higher count of the current face or any count of a higher face {new}'
-                f'Your current bet was {new_bet["dice_count"]} die with the value of {new_bet["dice_value"]} {new}'
-                f'while the previous bet is {prev_bet["dice_count"]} of die with value of {prev_bet["dice_value"]} {new}'
-            )
+            if (self.__class__.__name__ == "Player"):
+                print(
+                    f'You must place a bet with either a higher count of the current face or any count of a higher face {new}'
+                    f'Your current bet was {new_bet["dice_count"]} die with the value of {new_bet["dice_value"]} {new}'
+                    f'while the previous bet is {prev_bet["dice_count"]} of die with value of {prev_bet["dice_value"]} {new}'
+                )
             return False
         return True
 
@@ -154,8 +155,6 @@ class NPCPlayer(Player):
     calc_odds
         Calculates the probability for for a bet to be correct
         based on a NPCs own hand and the number of other dice on the table
-    override bet_is_valid
-        Same as for parent class but defined without the informational print statements
     override make_decision
         The NPC player makes a decision based on odds of the previous bet in the game
     override make_bet
@@ -166,23 +165,8 @@ class NPCPlayer(Player):
         super().__init__(name)
         self.is_human = False
 
-    def bet_is_valid(self, new_bet, prev_bet):
-        """Check if a bet is valid based on the state of the game, defined without the print statements for NPC player"""
-        if (
-            not 1 <= new_bet["dice_value"] <= 6
-            or not 1 <= new_bet["dice_count"] <= Player.total_die_count
-        ):
-            return False
-        if (
-            (new_bet["dice_count"] <= prev_bet["dice_count"] and not new_bet["dice_value"] > prev_bet["dice_value"])
-            or (new_bet["dice_value"] < prev_bet["dice_value"])
-        ):
-            return False
-        return True
-
-
     def make_decision(self, game_prev_bet, is_wild):
-        """NPC player chooses when to be or call based on odds"""
+        """NPC player chooses when to bet or call based on odds"""
         odds = self.calc_odds(game_prev_bet, is_wild)
         if odds < 0.3:
             return "call"
