@@ -42,7 +42,7 @@ class Player:
         self.name = name
         self.num_of_dice = 5
         self.hand = []
-        self._dice_roll()
+        self.dice_roll()
         self.is_human = True
         Player.total_die_count += self.num_of_dice
 
@@ -50,7 +50,7 @@ class Player:
         """Return a players name"""
         return self.name
 
-    def _dice_roll(self):
+    def dice_roll(self):
         """Roll the dice in a players hand"""
         roll_results = []
         for _ in range(self.num_of_dice):
@@ -76,11 +76,11 @@ class Player:
             for row in dice_faces_rows:
                 print(f"{row}")
 
-    def make_decision(self, prev_bet, is_wild):
+    def make_decision(self, **kwargs):
         """Prompt the player to make a decision whether to bet or call"""
         print(
-            f'Last bet was {prev_bet["dice_count"]} dice of the value'
-            f' {prev_bet["dice_value"]}'
+            f'Last bet was {kwargs["game_prev_bet"].get("dice_count")} dice of the value'
+            f' {kwargs["game_prev_bet"].get("dice_value")}'
         )
         print("Your hand is:")
         self.gen_dice_faces()
@@ -97,7 +97,7 @@ class Player:
             self.num_of_dice -= 1
             Player.total_die_count -= 1
 
-    def make_bet(self, prev_bet):
+    def make_bet(self, **kwargs):
         """Prompt player to make a bet, and return it once a valid one is made"""
         new_bet = {"dice_count": 0, "dice_value": 0}
         print("Place your bet.")
@@ -109,7 +109,7 @@ class Player:
                 print("The entered value is a not an integer. Try again")
                 continue
             else:
-                if self._bet_is_valid(new_bet, prev_bet):
+                if self._bet_is_valid(new_bet, kwargs['prev_bet']):
                     return new_bet
 
     def _bet_is_valid(self, new_bet, prev_bet):
@@ -165,9 +165,10 @@ class NPCPlayer(Player):
         super().__init__(name)
         self.is_human = False
 
-    def make_decision(self, game_prev_bet, is_wild):
+    def make_decision(self, **kwargs):
         """NPC player chooses when to bet or call based on odds"""
-        odds = self.calc_odds(game_prev_bet, is_wild)
+        odds = self.calc_odds(kwargs['game_prev_bet'], kwargs['is_wild'])
+        #TODO fix magic number 0.3
         if odds < 0.3:
             return "call"
         return "bet"
@@ -187,29 +188,29 @@ class NPCPlayer(Player):
             1 - binom.cdf(dice_val_count - 1, total_hidden_dice, face_possibility), 2
         )
 
-    def make_bet(self, prev_bet, is_wild):
+    def make_bet(self, **kwargs):
         """NPC player to make a bet based on dice in his hand, if best bet not a valid bet randomize to a valid one"""
         new_bet = {"dice_count": 0, "dice_value": 0}
         freq = 0
         for i in self.hand:
             freq = self.hand.count(i)
-            if is_wild and i != 1:
+            if kwargs['is_wild'] and i != 1:
                 freq += self.hand.count(1)
-            if freq > new_bet["dice_count"]:
-                new_bet["dice_count"] = freq
-                new_bet["dice_value"] = i
-        if is_wild and new_bet["dice_value"] == 1:
-            new_bet["dice_value"] = random.randint(2, 6)
-        while not self._bet_is_valid(new_bet, prev_bet):
+            if freq > new_bet['dice_count']:
+                new_bet['dice_count'] = freq
+                new_bet['dice_value'] = i
+        if kwargs['is_wild'] and new_bet["dice_value"] == 1:
+            new_bet['dice_value'] = random.randint(2, 6)
+        while not self._bet_is_valid(new_bet, kwargs['prev_bet']):
             # bluff on random
             if random.random() < 0.3:
-                new_bet["dice_value"], new_bet["dice_count"] = random.randint(
-                    prev_bet["dice_value"], 6
-                ), prev_bet["dice_count"] + random.randint(-1, 1)
+                new_bet['dice_value'], new_bet['dice_count'] = random.randint(
+                    kwargs['prev_bet'].get('dice_value'), 6
+                ), kwargs['prev_bet'].get('dice_count') + random.randint(-1, 1)
             else:
-                new_bet["dice_value"], new_bet["dice_count"] = prev_bet[
-                    "dice_value"
-                ], prev_bet["dice_count"] + random.randint(1, 2)
+                new_bet['dice_value'], new_bet['dice_count'] = kwargs['prev_bet'].get(
+                    'dice_value'
+                ), kwargs['prev_bet'].get('dice_count') + random.randint(1, 2)
         print(
             f'{self.name} bets that there is {new_bet["dice_count"]} die with value of'
             f' {new_bet["dice_value"]} on the table'
@@ -416,11 +417,11 @@ class Game:
     def _play_game(self):
         """Play rounds looping through each player until only one remains"""
         self._set_starting_player()
-        self.bet.update(self.current_player.make_bet(self.bet, self.wild_ones))
+        self.bet.update(self.current_player.make_bet(prev_bet=self.bet, is_wild=self.wild_ones))
         self._get_next_player()
         while True:
             player_decision = self.current_player.make_decision(
-                self.bet, self.wild_ones
+                game_prev_bet=self.bet, is_wild=self.wild_ones
             )
             if player_decision == "call":
                 print(f"{self.current_player.get_name()} calls that last bet was BS!")
@@ -431,5 +432,5 @@ class Game:
                 self._restart_for_new_round()
                 player_decision = "bet"
             if player_decision == "bet":
-                self.bet.update(self.current_player.make_bet(self.bet, self.wild_ones))
+                self.bet.update(self.current_player.make_bet(prev_bet=self.bet, is_wild=self.wild_ones))
                 self._get_next_player()
