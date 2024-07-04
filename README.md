@@ -16,3 +16,4 @@ then the player who made that bid wins, otherwise the person that called the bet
 The losing player loses one die.
 The game goes on until only one player has remaining dice in his hand, that player is declared the winner.
 
+The game has been tested with python 3.11
