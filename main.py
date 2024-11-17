@@ -1,6 +1,9 @@
-from classes import *
+from player import Player
+from npc_player import NPCPlayer
+from game import Game
+#from classes import *
 
-bot_names = [
+BOT_NAMES = [
     "Maccus",
     "Ratlin",
     "Penrod",
@@ -15,5 +18,5 @@ bot_names = [
 
 
 if __name__ == "__main__":
-    oGame = Game(bot_names)
-    oGame.start_game()
+    game = Game(BOT_NAMES)
+    game.start_game()
