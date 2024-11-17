@@ -315,7 +315,8 @@ class Game:
         """Add the human player, prompt him regarding how many NPC players he wants in the game"""
         self.list_of_players = []
         number_of_bots = 0
-        self.list_of_players.append(Player(input("Enter your name: ")))
+        #self.list_of_players.append(Player(input("Enter your name: ")))
+        self._add_human_player()
         while True:
             try:
                 number_of_bots = int(
@@ -334,6 +335,17 @@ class Game:
             print(f"{name} joins the game!")
             bot_names_list.remove(name)
             self.list_of_players.append(NPCPlayer(name))
+    
+    def _add_human_player(self):
+        name = ""
+        while(name == "" or name in self.bot_names_list):
+            name=input("Enter your name: ")
+            if not name:
+                print("You cannot play with an empty name")
+            if name in self.bot_names_list:
+                print(f"The name {name} is already a reserved name for a bot player, choose a name that is a non-empty string and not one of the following names {self.bot_names_list}")
+
+        self.list_of_players.append(Player(name))
 
     def _set_starting_player(self):
         """Set who will be the starting player for the game, if he is not an NPC, show his hand on the screen"""
@@ -389,7 +401,7 @@ class Game:
             self._get_next_player()
         for player in self.list_of_players:
             if len(player.hand) == 0:
-                print(f"{self.current_player.get_name()} is out of the game")
+                print(f"{player.get_name()} is out of the game")
         self.list_of_players = [
             player for player in self.list_of_players if not len(player.hand) == 0
         ]
